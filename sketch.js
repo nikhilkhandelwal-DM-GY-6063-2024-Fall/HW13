@@ -1,85 +1,71 @@
-// serial variables
-let mSerial;
-
-let connectButton;
-
-let readyToReceive;
-
-// project variables
-let mElls = [];
-
-function receiveSerial() {
-  let line = mSerial.readUntil("\n");
-  trim(line);
-  if (!line) return;
-
-  if (line.charAt(0) != "{") {
-    print("error: ", line);
-    readyToReceive = true;
-    return;
-  }
-
-  // get data from Serial string
-  let data = JSON.parse(line).data;
-  let a0 = data.A0;
-  let d2 = data.D2;
-
-  // use data to update project variables
-  if (d2.isPressed) {
-    mElls.push({
-      x: random(width),
-      y: random(height),
-      c: map(d2.count % 20, 0, 20, 155, 255),
-      d: map(a0.value, 0, 4095, 20, 200),
-    });
-  }
-
-  // serial update
-  readyToReceive = true;
-}
-
-function connectToSerial() {
-  if (!mSerial.opened()) {
-    mSerial.open(9600);
-
-    readyToReceive = true;
-    connectButton.hide();
-  }
-}
+let serial; // Serial port
+let potValue = 500; // Potentiometer default value
+let buttonState = false; // Button state
+let circleColor;
 
 function setup() {
-  // setup project
   createCanvas(windowWidth, windowHeight);
 
-  // setup serial
-  readyToReceive = false;
+  // Setup serial communication
+  serial = new p5.SerialPort();
+  serial.on('connected', () => console.log('Serial connected'));
+  serial.on('open', () => console.log('Serial port opened'));
+  serial.on('data', serialEvent);
+  serial.on('error', serialError);
+  serial.on('close', () => console.log('Serial port closed'));
 
-  mSerial = createSerial();
-
-  connectButton = createButton("Connect To Serial");
-  connectButton.position(width / 2, height / 2);
-  connectButton.mousePressed(connectToSerial);
+  // Replace with the correct port name
+  serial.open('/dev/cu.usbmodem0001'); // Example for macOS
 }
 
 function draw() {
-  // project logic
-  background(0);
+  background(235, 214, 1);
+  
+  // Map potentiometer value for circle size
+  let bigCircleSize = map(potValue, 0, 1023, 20, 100);
+  let smallCircleSize = map(potValue, 0, 1023, 5, 30);
 
-  for (let i = 0; i < mElls.length; i++) {
-    let me = mElls[i];
-    fill(me.c, 0, 0);
-    ellipse(me.x, me.y, me.d, me.d);
+  // Toggle color based on button
+  circleColor = buttonState ? color(255, 0, 0) : color(0, 0, 0);
+
+  fill(circleColor);
+  noStroke();
+
+  // Bigger circles
+  for (let y = 0; y < height; y += 100) {
+    for (let x = 0; x < width; x += 100) {
+      ellipse(x, y, bigCircleSize);
+    }
   }
 
-  // update serial: request new data
-  if (mSerial.opened() && readyToReceive) {
-    readyToReceive = false;
-    mSerial.clear();
-    mSerial.write(0xab);
+  // Smaller circles
+  for (let y = 0; y < height; y += 50) {
+    for (let x = 0; x < width; x += 50) {
+      ellipse(x, y, smallCircleSize);
+    }
   }
 
-  // update serial: read new data
-  if (mSerial.availableBytes() > 8) {
-    receiveSerial();
+  // Bigger circles in alternate rows
+  for (let y = 50; y < height; y += 100) {
+    for (let x = 50; x < width; x += 100) {
+      ellipse(x, y, bigCircleSize);
+    }
   }
+}
+
+function serialEvent() {
+  let jsonString = serial.readLine(); // Read incoming JSON
+  if (jsonString.length > 0) {
+    try {
+      let json = JSON.parse(jsonString);
+      potValue = json.pot; // Potentiometer value
+      buttonState = json.button; // Button state
+    } catch (err) {
+      console.error("Error parsing JSON:", err);
+    }
+  }
+}
+
+function serialError(err) {
+  console.error("Serial error: ", err);
 }
