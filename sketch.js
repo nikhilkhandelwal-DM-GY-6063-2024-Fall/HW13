@@ -1,71 +1,47 @@
-let serial; // Serial port
-let potValue = 500; // Potentiometer default value
-let buttonState = false; // Button state
-let circleColor;
+let serial;                     // Serial communication object
+let potValue = 0;               // Potentiometer value
+let circleColor;                // Circle color
+let circleSize = 30;            // Default circle size
+let toggleColor = false;        // State for button toggle
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  circleColor = color(0, 0, 0); // Default color: Black
 
   // Setup serial communication
   serial = new p5.SerialPort();
-  serial.on('connected', () => console.log('Serial connected'));
-  serial.on('open', () => console.log('Serial port opened'));
+  serial.open('/dev/tty.usbmodemXXXX'); // Replace with your port
   serial.on('data', serialEvent);
-  serial.on('error', serialError);
-  serial.on('close', () => console.log('Serial port closed'));
-
-  // Replace with the correct port name
-  serial.open('/dev/cu.usbmodem0001'); // Example for macOS
 }
 
 function draw() {
-  background(235, 214, 1);
-  
-  // Map potentiometer value for circle size
-  let bigCircleSize = map(potValue, 0, 1023, 20, 100);
-  let smallCircleSize = map(potValue, 0, 1023, 5, 30);
+  background(235, 214, 1); // Background color
 
-  // Toggle color based on button
-  circleColor = buttonState ? color(255, 0, 0) : color(0, 0, 0);
+  // Map potentiometer to circle size
+  circleSize = map(potValue, 0, 1023, 10, 100);
 
-  fill(circleColor);
-  noStroke();
+  // Update circle color based on toggle
+  circleColor = toggleColor ? color(255, 0, 0) : color(0, 0, 0); // Red or Black
 
-  // Bigger circles
+  // Draw the grid of circles
   for (let y = 0; y < height; y += 100) {
     for (let x = 0; x < width; x += 100) {
-      ellipse(x, y, bigCircleSize);
-    }
-  }
-
-  // Smaller circles
-  for (let y = 0; y < height; y += 50) {
-    for (let x = 0; x < width; x += 50) {
-      ellipse(x, y, smallCircleSize);
-    }
-  }
-
-  // Bigger circles in alternate rows
-  for (let y = 50; y < height; y += 100) {
-    for (let x = 50; x < width; x += 100) {
-      ellipse(x, y, bigCircleSize);
+      fill(circleColor);
+      noStroke();
+      ellipse(x, y, circleSize);
     }
   }
 }
 
 function serialEvent() {
-  let jsonString = serial.readLine(); // Read incoming JSON
-  if (jsonString.length > 0) {
+  let data = serial.readLine(); // Read serial data
+  if (data.length > 0) {
     try {
-      let json = JSON.parse(jsonString);
-      potValue = json.pot; // Potentiometer value
-      buttonState = json.button; // Button state
+      let json = JSON.parse(data);
+      potValue = json.pot;
+      toggleColor = json.colorToggle; // Toggle state from button
     } catch (err) {
-      console.error("Error parsing JSON:", err);
+      console.log("Error parsing JSON:", err);
     }
   }
-}
-
-function serialError(err) {
-  console.error("Serial error: ", err);
 }
