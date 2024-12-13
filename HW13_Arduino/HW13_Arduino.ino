@@ -1,33 +1,33 @@
-#include <ArduinoJson.h>
-
-const int potPin = A0;    // Potentiometer connected to A0
-const int buttonPin = 2;  // Button connected to pin 2
-int potValue = 0;
-bool buttonState = false;
+const int potPin = A0;    // Potentiometer pin
+const int buttonPin = 2;  // Button pin
+int potValue = 0;         // Potentiometer reading
+bool buttonState = false; // Button state
 bool prevButtonState = false;
+bool toggleState = false; // Toggle state for button
 
 void setup() {
-  Serial.begin(9600);
-  pinMode(buttonPin, INPUT_PULLUP);  // Button with pull-up resistor
+  Serial.begin(9600);      // Start serial communication
+  pinMode(buttonPin, INPUT_PULLUP);  // Configure button with pull-up resistor
 }
 
 void loop() {
-  potValue = analogRead(potPin);  // Read potentiometer value
-  buttonState = digitalRead(buttonPin) == LOW;  // Read button state
+  // Wait for a synchronization signal from p5.js
+  if (Serial.available() > 0) {
+    byte command = Serial.read();
+    if (command == 0xAB) {
+      potValue = analogRead(potPin);  // Read potentiometer
+      buttonState = digitalRead(buttonPin) == LOW;  // Read button state
+      
+      // Toggle state when button is pressed
+      if (buttonState && !prevButtonState) {
+        toggleState = !toggleState;
+      }
+      prevButtonState = buttonState;
 
-  // Detect button press and toggle state
-  static bool toggleState = false;
-  if (buttonState && !prevButtonState) {
-    toggleState = !toggleState; // Toggle circle color
+      // Send data as JSON (Potentiometer and Toggle State)
+      Serial.print(potValue);
+      Serial.print(",");
+      Serial.println(toggleState);
+    }
   }
-  prevButtonState = buttonState;
-
-  // Create JSON object to send data
-  StaticJsonDocument<200> jsonDoc;
-  jsonDoc["pot"] = potValue;
-  jsonDoc["colorToggle"] = toggleState;
-
-  serializeJson(jsonDoc, Serial);
-  Serial.println();
-  delay(50); // To prevent flooding the serial port
 }
