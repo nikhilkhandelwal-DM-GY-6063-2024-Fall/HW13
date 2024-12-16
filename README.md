@@ -38,7 +38,7 @@ The p5.js sketch:
 
 ---
 
-## Finite State Machine (Optional)
+## Finite State Machine
 A simple state machine is implemented for the button:
 - **State 0**: Default color (button not pressed).
 - **State 1**: Random circle colors (button pressed).
