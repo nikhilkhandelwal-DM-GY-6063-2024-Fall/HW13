@@ -1,61 +1,91 @@
-let mSerial;                     // Serial object
-let connectButton;               // Button to connect serial port
-let cBackgroundColor = 0;        // Background color
-let circleColor = 'red';         // Circle color
-let potValue = 0;                // Potentiometer value
-let toggleState = false;         // Button toggle state
+let mSerial;
+let connectButton;
+let potValue = 0;
+let buttonState = 0;
+let toggleColor = false;
+let circleSize = 30;
+let circleColor;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  background(235, 214, 1);
 
-  // Initialize serial communication
   mSerial = createSerial();
 
-  // Button to connect to serial port
+  // Add a connect button
   connectButton = createButton("Connect To Serial");
   connectButton.position(width / 2 - 50, height / 2);
   connectButton.mousePressed(connectToSerial);
 
-  readyToReceive = false;        // Initial communication state
+  // Default circle color
+  circleColor = color(0, 0, 0);
 }
 
 function draw() {
-  background(cBackgroundColor);  // Set dynamic background color
+  background(235, 214, 1);
 
-  // Draw circle with toggle-based color
-  fill(toggleState ? 'blue' : 'red');
-  noStroke();
-  ellipse(width / 2, height / 2, 200);
-
-  // Communication logic
-  if (mSerial.opened() && readyToReceive) {
-    mSerial.clear();
-    mSerial.write(0xAB);         // Send synchronization signal to Arduino
-    readyToReceive = false;
-  }
-
-  // If serial data is available, process it
-  if (mSerial.availableBytes() > 0) {
+  // Receive data if serial is available
+  if (mSerial.opened() && mSerial.availableBytes() > 0) {
     receiveSerial();
   }
-}
 
-function receiveSerial() {
-  let mLine = mSerial.readUntil("\n"); // Read the incoming line
-  let values = mLine.split(",");       // Split data into two values
-
-  if (values.length == 2) {
-    potValue = int(values[0]);         // Potentiometer value
-    toggleState = values[1].trim() === "1"; // Button toggle state
-    cBackgroundColor = map(potValue, 0, 1023, 0, 255, true); // Map background
+  // For the Bigger Circles
+  for (let y = 0; y < height; y += 100) {
+    for (let x = 0; x < width; x += 100) {
+      fill(circleColor);
+      ellipse(x, y, circleSize); // Size controlled dynamically
+    }
   }
-  readyToReceive = true;
+
+  // For the Smaller Circles
+  for (let y = 0; y < height; y += 50) {
+    for (let x = 0; x < width; x += 50) {
+      fill(circleColor);
+      ellipse(x, y, circleSize / 3); // Smaller circles scaled down
+    }
+  }
+
+  // For the Bigger Circles in Alternate Rows
+  for (let y = 50; y < height; y += 100) {
+    for (let x = 50; x < width; x += 100) {
+      fill(circleColor);
+      ellipse(x, y, circleSize); // Size controlled dynamically
+    }
+  }
 }
 
+// Connect to serial port
 function connectToSerial() {
   if (!mSerial.opened()) {
-    mSerial.open(9600);         // Open the serial port
-    connectButton.hide();       // Hide the connection button
-    readyToReceive = true;      // Ready to send requests
+    mSerial.open(9600);
+    connectButton.hide();
+  }
+}
+
+// Receive data from Arduino
+function receiveSerial() {
+  let jsonString = mSerial.readUntil("\n"); // Read incoming JSON data
+  if (jsonString) {
+    try {
+      let data = JSON.parse(jsonString);
+      potValue = data.potValue;         
+      buttonState = data.buttonState;    
+
+      // Update circle size based on potentiometer value (30–100)
+      circleSize = map(potValue, 0, 1023, 30, 100);
+
+      // Change circle color dynamically when button is pressed
+      if (buttonState === 1) {
+        if (!toggleColor) {
+          circleColor = color(random(255), random(255), random(255));
+          toggleColor = true;
+        }
+      } else {
+        toggleColor = false; // Reset toggle state when button is released
+      }
+
+    } catch (e) {
+      console.error("JSON Parse Error:", e);
+    }
   }
 }

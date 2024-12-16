@@ -1,33 +1,23 @@
-const int potPin = A0;    // Potentiometer pin
-const int buttonPin = 2;  // Button pin
-int potValue = 0;         // Potentiometer reading
-bool buttonState = false; // Button state
-bool prevButtonState = false;
-bool toggleState = false; // Toggle state for button
+const int potPin = A0;   
+const int buttonPin = 2;  
+int potValue = 0; 
+int buttonState = 0;
 
 void setup() {
-  Serial.begin(9600);      // Start serial communication
-  pinMode(buttonPin, INPUT_PULLUP);  // Configure button with pull-up resistor
+  Serial.begin(9600);
+  pinMode(buttonPin, INPUT_PULLUP);
 }
 
 void loop() {
-  // Wait for a synchronization signal from p5.js
-  if (Serial.available() > 0) {
-    byte command = Serial.read();
-    if (command == 0xAB) {
-      potValue = analogRead(potPin);  // Read potentiometer
-      buttonState = digitalRead(buttonPin) == LOW;  // Read button state
-      
-      // Toggle state when button is pressed
-      if (buttonState && !prevButtonState) {
-        toggleState = !toggleState;
-      }
-      prevButtonState = buttonState;
+  potValue = analogRead(potPin);
+  buttonState = digitalRead(buttonPin) == LOW ? 1 : 0;
 
-      // Send data as JSON (Potentiometer and Toggle State)
-      Serial.print(potValue);
-      Serial.print(",");
-      Serial.println(toggleState);
-    }
-  }
+  // Send data as a JSON string
+  Serial.print("{\"potValue\":");
+  Serial.print(potValue);
+  Serial.print(",\"buttonState\":");
+  Serial.print(buttonState);
+  Serial.println("}");
+
+  delay(50);
 }
